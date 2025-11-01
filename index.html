@@ -1,84 +1,103 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Codename → Psych Converter</title>
-  <style>
-    :root{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;}
-    body{margin:0;padding:20px;background:#0b1020;color:#e6eef8}
-    .wrap{max-width:1000px;margin:0 auto}
-    h1{font-size:18px;margin:0 0 10px}
-    label{font-size:12px;opacity:.9}
-    textarea{width:100%;min-height:200px;margin:6px 0;padding:10px;border-radius:8px;border:0;background:#0f1724;color:#e6eef8;resize:vertical}
-    .row{display:flex;gap:8px;margin-top:8px}
-    .col{flex:1}
-    button{background:#1f6feb;border:0;padding:10px 12px;border-radius:8px;color:white;cursor:pointer}
-    button.secondary{background:#2b2f3a}
-    pre{background:#071028;padding:12px;border-radius:8px;overflow:auto;white-space:pre-wrap}
-    .controls{display:flex;gap:8px;margin:12px 0 6px}
-    .meta{font-size:12px;color:#9fb0d8}
-    footer{font-size:12px;color:#93a7c7;margin-top:12px}
-    .options{display:flex;gap:12px;align-items:center;margin-top:8px}
-    .small{font-size:12px}
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Codename → Psych Converter</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    background: #0d1117;
+    color: #e6edf3;
+  }
+  .dropzone {
+    border: 2px dashed #58a6ff;
+    border-radius: 10px;
+    padding: 60px;
+    text-align: center;
+    width: 400px;
+    transition: 0.3s;
+  }
+  .dropzone.dragover {
+    background: rgba(88,166,255,0.1);
+    border-color: #79c0ff;
+  }
+  button {
+    margin-top: 20px;
+    background: #238636;
+    border: none;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  button:hover {
+    background: #2ea043;
+  }
+</style>
 </head>
 <body>
-  <div class="wrap">
-    <h1>Codename → Psych converter (single-file)</h1>
-    <label>Paste Codename stage XML here</label>
-    <textarea id="xmlInput" placeholder="<!DOCTYPE codename-engine-stage>\n<stage folder=\"stages/dustshift/\" name=\"dustshift\" zoom=\"0.55\">...</stage>"></textarea>
+  <h1>Codename → Psych Converter</h1>
+  <div class="dropzone" id="dropzone">Drag & Drop your Codename file here or click to select</div>
+  <input type="file" id="fileInput" hidden>
+  <button id="convertBtn" disabled>Convert File</button>
 
-    <label>Optional: Paste Codename mid-song .hx (or leave empty)</label>
-    <textarea id="hxInput" placeholder="function stepHit(step:Int) { if (step == 1) vid.play(); }"></textarea>
+  <script>
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('fileInput');
+    const convertBtn = document.getElementById('convertBtn');
+    let selectedFile = null;
 
-    <div class="options">
-      <label class="small"><input type="checkbox" id="includeCreatePost" checked/> include onCreatePost()</label>
-      <label class="small"><input type="checkbox" id="camelCasePaths" /> keep original folder case</label>
-    </div>
+    dropzone.addEventListener('click', () => fileInput.click());
 
-    <div class="controls">
-      <button id="convertBtn">Convert →</button>
-      <button id="downloadBtn" class="secondary">Download .lua</button>
-      <button id="copyBtn" class="secondary">Copy to clipboard</button>
-      <button id="exampleBtn" class="secondary">Load example</button>
-    </div>
+    dropzone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropzone.classList.add('dragover');
+    });
 
-    <div class="row">
-      <div class="col">
-        <label>Generated Lua</label>
-        <pre id="output" contenteditable="true">-- Converted Lua will appear here</pre>
-      </div>
-    </div>
+    dropzone.addEventListener('dragleave', () => {
+      dropzone.classList.remove('dragover');
+    });
 
-    <footer class="meta">Tip: paste the generated .lua into your Psych Engine stages folder. This converter attempts reasonable defaults for scrollFactor, scale, and properties.</footer>
-  </div>
+    dropzone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropzone.classList.remove('dragover');
+      selectedFile = e.dataTransfer.files[0];
+      dropzone.textContent = `Loaded: ${selectedFile.name}`;
+      convertBtn.disabled = false;
+    });
 
-<script>
-// Utility helpers
-function attr(node, name, fallback=null){ if(!node) return fallback; return node.getAttribute(name) ?? fallback }
-function n2f(v, d=1){ if(v===null) return d; const n=parseFloat(v); return isNaN(n)?d:n }
+    fileInput.addEventListener('change', (e) => {
+      selectedFile = e.target.files[0];
+      dropzone.textContent = `Loaded: ${selectedFile.name}`;
+      convertBtn.disabled = false;
+    });
 
-function xmlToLua(xmlString, opts={}){
-  const parser = new DOMParser();
-  let doc;
-  try{ doc = parser.parseFromString(xmlString, 'application/xml'); }
-  catch(e){ return '-- XML parsing error\n' + e }
-  const err = doc.querySelector('parsererror');
-  if(err) return '-- XML parsing error:\n' + err.textContent;
+    convertBtn.addEventListener('click', async () => {
+      if (!selectedFile) return alert('No file selected!');
+      const text = await selectedFile.text();
 
-  const stage = doc.querySelector('stage');
-  if(!stage) return '-- no <stage> element found';
+      // Placeholder converter logic — replace with actual Codename → Psych conversion
+      const converted = text
+        .replaceAll('codename', 'psych')
+        .replaceAll('Codename', 'Psych')
+        .replaceAll('flixel', 'funkin');
 
-  const folder = attr(stage, 'folder', '').replace(/\\^\\/,'');
-  const name = attr(stage, 'name', 'stage')
-  const zoom = attr(stage, 'zoom', null)
-  const gfZoom = attr(stage, 'gfZoom', null)
-  const noteSkin = attr(stage, 'noteSkin', null)
-  const timeBarSkin = attr(stage, 'timeBarSkin', null)
-
-  const keepCase = opts.camelCasePaths;
-  function resPath(spriteName){
+      const blob = new Blob([converted], { type: 'text/plain' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = selectedFile.name.replace(/\.[^.]+$/, '') + '_psych.hx';
+      a.click();
+    });
+  </script>
+</body>
+</html>
     // Build resource path for Psych: convention 'stages/{folder}/{spriteName}'
     let base = folder || '';
     if(!keepCase) base = base.toLowerCase();
