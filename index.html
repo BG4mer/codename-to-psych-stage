@@ -1,28 +1,223 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Codename → Psych Converter</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Codename → Psych Converter</title>
+  <style>
+    :root{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;}
+    body{margin:0;padding:20px;background:#0b1020;color:#e6eef8}
+    .wrap{max-width:1000px;margin:0 auto}
+    h1{font-size:18px;margin:0 0 10px}
+    label{font-size:12px;opacity:.9}
+    textarea{width:100%;min-height:200px;margin:6px 0;padding:10px;border-radius:8px;border:0;background:#0f1724;color:#e6eef8;resize:vertical}
+    .row{display:flex;gap:8px;margin-top:8px}
+    .col{flex:1}
+    button{background:#1f6feb;border:0;padding:10px 12px;border-radius:8px;color:white;cursor:pointer}
+    button.secondary{background:#2b2f3a}
+    pre{background:#071028;padding:12px;border-radius:8px;overflow:auto;white-space:pre-wrap}
+    .controls{display:flex;gap:8px;margin:12px 0 6px}
+    .meta{font-size:12px;color:#9fb0d8}
+    footer{font-size:12px;color:#93a7c7;margin-top:12px}
+    .options{display:flex;gap:12px;align-items:center;margin-top:8px}
+    .small{font-size:12px}
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Codename → Psych Engine Converter</h1>
+  <div class="wrap">
+    <h1>Codename → Psych converter (single-file)</h1>
+    <label>Paste Codename stage XML here</label>
+    <textarea id="xmlInput" placeholder="<!DOCTYPE codename-engine-stage>\n<stage folder=\"stages/dustshift/\" name=\"dustshift\" zoom=\"0.55\">...</stage>"></textarea>
 
-        <div id="drop-zone">
-            <p>Drag & Drop Codename XML or HX files here<br>or click to select files</p>
-            <input type="file" id="file-input" multiple>
-        </div>
+    <label>Optional: Paste Codename mid-song .hx (or leave empty)</label>
+    <textarea id="hxInput" placeholder="function stepHit(step:Int) { if (step == 1) vid.play(); }"></textarea>
 
-        <div id="file-list"></div>
-
-        <h2>Preview & Download</h2>
-        <textarea id="preview" placeholder="Converted Lua will appear here..."></textarea>
-        <button id="download-btn">Download Lua</button>
+    <div class="options">
+      <label class="small"><input type="checkbox" id="includeCreatePost" checked/> include onCreatePost()</label>
+      <label class="small"><input type="checkbox" id="camelCasePaths" /> keep original folder case</label>
     </div>
 
-    <script src="converter.js"></script>
-    <script src="script.js"></script>
+    <div class="controls">
+      <button id="convertBtn">Convert →</button>
+      <button id="downloadBtn" class="secondary">Download .lua</button>
+      <button id="copyBtn" class="secondary">Copy to clipboard</button>
+      <button id="exampleBtn" class="secondary">Load example</button>
+    </div>
+
+    <div class="row">
+      <div class="col">
+        <label>Generated Lua</label>
+        <pre id="output" contenteditable="true">-- Converted Lua will appear here</pre>
+      </div>
+    </div>
+
+    <footer class="meta">Tip: paste the generated .lua into your Psych Engine stages folder. This converter attempts reasonable defaults for scrollFactor, scale, and properties.</footer>
+  </div>
+
+<script>
+// Utility helpers
+function attr(node, name, fallback=null){ if(!node) return fallback; return node.getAttribute(name) ?? fallback }
+function n2f(v, d=1){ if(v===null) return d; const n=parseFloat(v); return isNaN(n)?d:n }
+
+function xmlToLua(xmlString, opts={}){
+  const parser = new DOMParser();
+  let doc;
+  try{ doc = parser.parseFromString(xmlString, 'application/xml'); }
+  catch(e){ return '-- XML parsing error\n' + e }
+  const err = doc.querySelector('parsererror');
+  if(err) return '-- XML parsing error:\n' + err.textContent;
+
+  const stage = doc.querySelector('stage');
+  if(!stage) return '-- no <stage> element found';
+
+  const folder = attr(stage, 'folder', '').replace(/\\^\\/,'');
+  const name = attr(stage, 'name', 'stage')
+  const zoom = attr(stage, 'zoom', null)
+  const gfZoom = attr(stage, 'gfZoom', null)
+  const noteSkin = attr(stage, 'noteSkin', null)
+  const timeBarSkin = attr(stage, 'timeBarSkin', null)
+
+  const keepCase = opts.camelCasePaths;
+  function resPath(spriteName){
+    // Build resource path for Psych: convention 'stages/{folder}/{spriteName}'
+    let base = folder || '';
+    if(!keepCase) base = base.toLowerCase();
+    // remove trailing slash
+    base = base.replace(/\/+$/, '')
+    if(base && !base.endsWith('/')) base += '/'
+    return base + spriteName
+  }
+
+  const parts = []
+  parts.push("function onCreate()")
+
+  // sprites
+  const sprites = Array.from(stage.querySelectorAll('sprite'))
+  sprites.forEach(sp =>{
+    const sname = attr(sp, 'name', attr(sp,'sprite','sprite'))
+    const spriteFile = attr(sp, 'sprite', sname)
+    const x = n2f(attr(sp,'x',0));
+    const y = n2f(attr(sp,'y',0));
+    const scale = attr(sp,'scale', null);
+    const antialiasing = attr(sp,'antialiasing', null);
+    const updateHitbox = attr(sp,'updateHitbox', null);
+    const scrollx = attr(sp,'scrollx', null);
+    const scrolly = attr(sp,'scrolly', null);
+
+    parts.push(`    makeLuaSprite('${sname}', '${resPath(spriteFile)}', ${x}, ${y});`)
+    if(scrollx !== null || scrolly !== null){
+      const sx = scrollx!==null ? parseFloat(scrollx) : 1
+      const sy = scrolly!==null ? parseFloat(scrolly) : sx
+      parts.push(`    setScrollFactor('${sname}', ${sx}, ${sy});`)
+    } else {
+      parts.push(`    setScrollFactor('${sname}', 1, 1);`)
+    }
+    if(scale !== null) {
+      const s = parseFloat(scale)
+      parts.push(`    scaleLuaSprite('${sname}', ${s}, ${s});`)
+    }
+    parts.push(`    addLuaSprite('${sname}', false);`)
+    if(antialiasing !== null) parts.push(`    setProperty('${sname}.antialiasing', ${antialiasing === 'true' ? 'true' : 'false'});`)
+    if(updateHitbox === 'true') parts.push(`    updateHitbox('${sname}');`)
+    parts.push('')
+  })
+
+  // gf, dad, boyfriend
+  const gf = stage.querySelector('girlfriend')
+  if(gf){
+    const gx=n2f(attr(gf,'x',0)); const gy=n2f(attr(gf,'y',0)); const alpha=attr(gf,'alpha',null);
+    parts.push(`    -- girlfriend`) 
+    parts.push(`    setProperty('gf.x', ${gx});`)
+    parts.push(`    setProperty('gf.y', ${gy});`)
+    if(alpha!==null) parts.push(`    setProperty('gf.alpha', ${parseFloat(alpha)});`)
+    parts.push('')
+  }
+  const dad = stage.querySelector('dad')
+  if(dad){ const dx=n2f(attr(dad,'x',0)); const dy=n2f(attr(dad,'y',0)); const cx=attr(dad,'camxoffset',null); const cy=attr(dad,'camyoffset',null);
+    parts.push(`    -- dad`) 
+    parts.push(`    setProperty('dad.x', ${dx});`)
+    parts.push(`    setProperty('dad.y', ${dy});`)
+    if(cx!==null || cy!==null){ const cxv = cx?parseFloat(cx):0; const cyv = cy?parseFloat(cy):0; parts.push(`    setProperty('dadCameraOffset', {${cxv}, ${cyv}});`) }
+    parts.push('') }
+  const bf = stage.querySelector('boyfriend')
+  if(bf){ const bx=n2f(attr(bf,'x',0)); const by=n2f(attr(bf,'y',0)); const cx=attr(bf,'camxoffset',null); const cy=attr(bf,'camyoffset',null);
+    parts.push(`    -- boyfriend`) 
+    parts.push(`    setProperty('boyfriend.x', ${bx});`)
+    parts.push(`    setProperty('boyfriend.y', ${by});`)
+    if(cx!==null || cy!==null){ const cxv = cx?parseFloat(cx):0; const cyv = cy?parseFloat(cy):0; parts.push(`    setProperty('boyfriendCameraOffset', {${cxv}, ${cyv}});`) }
+    parts.push('') }
+
+  parts.push('end')
+
+  // onCreatePost for zooms and skins
+  if(opts.includeCreatePost){
+    const post = []
+    if(zoom!==null || gfZoom!==null || noteSkin!==null || timeBarSkin!==null){
+      post.push('\nfunction onCreatePost()')
+      if(zoom!==null) post.push(`    setProperty('defaultCamZoom', ${parseFloat(zoom)});`)
+      if(gfZoom!==null) post.push(`    setProperty('defaultGFZoom', ${parseFloat(gfZoom)});`)
+      if(timeBarSkin!==null) post.push(`    -- timeBarSkin: ${timeBarSkin} (use setTimeBarColors or custom graphic)
+    -- setTimeBarColors('FFFFFF','BFBFBF')`)
+      if(noteSkin!==null) post.push(`    -- noteSkin: ${noteSkin} (you may want to add noteskin change script)`) 
+      post.push('end')
+    }
+    parts.push(post.join('\n'))
+  }
+
+  return parts.join('\n')
+}
+
+// Simple hx -> lua mid-song converter (best-effort)
+function hxToLua(hxText){
+  if(!hxText || !hxText.trim()) return '';
+  const lines = hxText.split(/\r?\n/);
+  let lua = '\n-- Converted mid-song logic (best-effort)\nfunction onStepHit()\n';
+  // find simple patterns: if (step == N) vid.play(); and vid.visible = false;
+  const playRegex = /if\s*\(step\s*==\s*(\d+)\)\s*{?\s*vid\.play\(\)\s*;?\s*}?/i;
+  const visOffRegex = /if\s*\(step\s*==\s*(\d+)\)\s*{?\s*vid\.visible\s*=\s*false\s*;?\s*}?/i;
+  for(const l of lines){
+    let m;
+    if(m = l.match(playRegex)){
+      lua += `    if curStep == ${m[1]} then\n        -- start video (ensure you loaded it as a Lua video or use startVideo)\n        startVideo('bargain')\n    end\n`;
+    }
+    if(m = l.match(visOffRegex)){
+      lua += `    if curStep == ${m[1]} then\n        -- hide video or sprite\n        setProperty('bargain.visible', false)\n    end\n`;
+    }
+  }
+  lua += 'end\n'
+  return lua
+}
+
+// UI wiring
+const xmlInput = document.getElementById('xmlInput')
+const hxInput = document.getElementById('hxInput')
+const out = document.getElementById('output')
+const convertBtn = document.getElementById('convertBtn')
+const downloadBtn = document.getElementById('downloadBtn')
+const copyBtn = document.getElementById('copyBtn')
+const exampleBtn = document.getElementById('exampleBtn')
+
+convertBtn.addEventListener('click', ()=>{
+  const lua = xmlToLua(xmlInput.value, {includeCreatePost: document.getElementById('includeCreatePost').checked, camelCasePaths: document.getElementById('camelCasePaths').checked})
+  const mid = hxToLua(hxInput.value)
+  out.textContent = lua + (mid ? '\n' + mid : '')
+})
+
+copyBtn.addEventListener('click', async ()=>{
+  try{ await navigator.clipboard.writeText(out.textContent); alert('copied!') }catch(e){ alert('copy failed') }
+})
+
+downloadBtn.addEventListener('click', ()=>{
+  const blob = new Blob([out.textContent], {type:'text/plain'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'converted_stage.lua'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+})
+
+exampleBtn.addEventListener('click', ()=>{
+  xmlInput.value = `<!DOCTYPE codename-engine-stage>\n<stage folder="stages/dustshift/" name="dustshift" zoom="0.55" gfZoom="0.43" noteSkin="cornered" timeBarSkin="waterfall">\n    <sprite x=\"-280\" sprite=\"red\" y=\"0\" name=\"red\" scale=\"1.26\" antialiasing=\"true\" updateHitbox=\"true\"/>\n    <sprite x=\"1080\" sprite=\"school\" y=\"1000\" name=\"school\" scale=\"10\" antialiasing=\"false\"/>\n    <girlfriend x=\"1000\" y=\"1049\" alpha=\"0\"/>\n    <dad x=\"250\" y=\"1320\" camyoffset=\"-50\" camxoffset=\"200\"/>\n    <boyfriend x=\"1920\" y=\"1550\" camxoffset=\"-400\" camyoffset=\"-50\"/>\n</stage>`;
+  hxInput.value = `function stepHit(step:Int) {\n    if (step == 1) { vid.play(); }\n    if (step == 156) { vid.visible = false; }\n}`;
+})
+</script>
 </body>
 </html>
