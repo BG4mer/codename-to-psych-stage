@@ -1,20 +1,28 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Codename → Psych Converter</title>
-  <link rel="stylesheet" href="style.css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Codename → Psych Converter</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1>Codename → Lua Converter</h1>
+    <div class="container">
+        <h1>Codename → Psych Engine Converter</h1>
 
-  <div id="dropZone" class="drop-zone">Drop .xml or .hx files here or click to select</div>
-  <input type="file" id="fileInput" accept=".xml,.hx" multiple>
-  <button id="convertBtn" disabled>Convert All</button>
+        <div id="drop-zone">
+            <p>Drag & Drop Codename XML or HX files here<br>or click to select files</p>
+            <input type="file" id="file-input" multiple>
+        </div>
 
-  <pre id="output"></pre>
+        <div id="file-list"></div>
 
-  <script src="script.js"></script>
+        <h2>Preview & Download</h2>
+        <textarea id="preview" placeholder="Converted Lua will appear here..."></textarea>
+        <button id="download-btn">Download Lua</button>
+    </div>
+
+    <script src="converter.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>
