@@ -1,223 +1,126 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Codename → Psych Converter</title>
-  <style>
-    :root{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;}
-    body{margin:0;padding:20px;background:#0b1020;color:#e6eef8}
-    .wrap{max-width:1000px;margin:0 auto}
-    h1{font-size:18px;margin:0 0 10px}
-    label{font-size:12px;opacity:.9}
-    textarea{width:100%;min-height:200px;margin:6px 0;padding:10px;border-radius:8px;border:0;background:#0f1724;color:#e6eef8;resize:vertical}
-    .row{display:flex;gap:8px;margin-top:8px}
-    .col{flex:1}
-    button{background:#1f6feb;border:0;padding:10px 12px;border-radius:8px;color:white;cursor:pointer}
-    button.secondary{background:#2b2f3a}
-    pre{background:#071028;padding:12px;border-radius:8px;overflow:auto;white-space:pre-wrap}
-    .controls{display:flex;gap:8px;margin:12px 0 6px}
-    .meta{font-size:12px;color:#9fb0d8}
-    footer{font-size:12px;color:#93a7c7;margin-top:12px}
-    .options{display:flex;gap:12px;align-items:center;margin-top:8px}
-    .small{font-size:12px}
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Codename → Psych Engine Converter</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Space Mono', monospace; background:#1a1a2e; color:#e94560; min-height:100vh; padding:2rem; display:flex; flex-direction:column; align-items:center;}
+  .container { max-width:800px; width:100%; background:rgba(0,0,0,0.7); backdrop-filter:blur(10px); border-radius:20px; padding:2rem; border:1px solid rgba(233,69,96,0.2);}
+  h1 { text-align:center; margin-bottom:2rem; font-size:1.8rem; font-weight:700; background:linear-gradient(45deg,#e94560,#f27121); -webkit-background-clip:text; -webkit-text-fill-color:transparent;}
+  .file-input-wrapper { position: relative; margin: 1rem 0; width:100%; }
+  .file-input { position:absolute; left:-9999px; }
+  .file-input-label { display:block; padding:1rem; background:linear-gradient(135deg,#0f3460,#533483); color:white; border-radius:10px; cursor:pointer; text-align:center; border:2px solid transparent; transition: all 0.3s;}
+  .file-input-label:hover { background:linear-gradient(135deg,#533483,#0f3460); border-color:#e94560; }
+  .file-input-label.has-file { background:linear-gradient(135deg,#e94560,#f27121); animation:pulse 2s infinite;}
+  @keyframes pulse {0%,100%{opacity:1;}50%{opacity:0.8;}}
+  .button-group { display:flex; gap:1rem; margin:2rem 0; }
+  button { flex:1; padding:1rem 2rem; background:linear-gradient(135deg,#e94560,#f27121); color:white; border:none; border-radius:10px; cursor:pointer; font-weight:700; position:relative; overflow:hidden; transition:0.3s;}
+  button:hover { transform:translateY(-3px); box-shadow:0 10px 20px rgba(233,69,96,0.3);}
+  button:disabled { opacity:0.5; cursor:not-allowed; }
+  textarea { width:100%; height:400px; background:#0a0a0a; color:#00ff41; font-family:'Space Mono', monospace; font-size:0.9rem; border:2px solid #333; border-radius:10px; padding:1rem; resize:vertical;}
+  .status { margin:1rem 0; padding:1rem; border-radius:10px; text-align:center; font-weight:700; opacity:0; transition:0.3s;}
+  .status.show { opacity:1; }
+  .status.success { background: rgba(46,204,113,0.2); border:1px solid #2ecc71; color:#2ecc71; }
+  .status.error { background: rgba(231,76,60,0.2); border:1px solid #e74c3c; color:#e74c3c; }
+</style>
 </head>
 <body>
-  <div class="wrap">
-    <h1>Codename → Psych converter (single-file)</h1>
-    <label>Paste Codename stage XML here</label>
-    <textarea id="xmlInput" placeholder="<!DOCTYPE codename-engine-stage>\n<stage folder=\"stages/dustshift/\" name=\"dustshift\" zoom=\"0.55\">...</stage>"></textarea>
+<div class="container">
+  <h1>🎵 Codename → Psych Engine Converter</h1>
 
-    <label>Optional: Paste Codename mid-song .hx (or leave empty)</label>
-    <textarea id="hxInput" placeholder="function stepHit(step:Int) { if (step == 1) vid.play(); }"></textarea>
-
-    <div class="options">
-      <label class="small"><input type="checkbox" id="includeCreatePost" checked/> include onCreatePost()</label>
-      <label class="small"><input type="checkbox" id="camelCasePaths" /> keep original folder case</label>
-    </div>
-
-    <div class="controls">
-      <button id="convertBtn">Convert →</button>
-      <button id="downloadBtn" class="secondary">Download .lua</button>
-      <button id="copyBtn" class="secondary">Copy to clipboard</button>
-      <button id="exampleBtn" class="secondary">Load example</button>
-    </div>
-
-    <div class="row">
-      <div class="col">
-        <label>Generated Lua</label>
-        <pre id="output" contenteditable="true">-- Converted Lua will appear here</pre>
-      </div>
-    </div>
-
-    <footer class="meta">Tip: paste the generated .lua into your Psych Engine stages folder. This converter attempts reasonable defaults for scrollFactor, scale, and properties.</footer>
+  <div class="file-input-wrapper">
+    <input type="file" id="xmlInput" accept=".xml" class="file-input" multiple>
+    <label for="xmlInput" class="file-input-label" id="xmlLabel">📁 Select Codename XML file(s)</label>
   </div>
 
+  <div class="file-input-wrapper">
+    <input type="file" id="hxInput" accept=".hx" class="file-input" multiple>
+    <label for="hxInput" class="file-input-label" id="hxLabel">📜 Select Codename HX file(s) (optional)</label>
+  </div>
+
+  <div class="status" id="status"></div>
+
+  <div class="button-group">
+    <button onclick="convert()" id="convertBtn" disabled>✨ Convert to Psych</button>
+    <button onclick="download()" id="downloadBtn" disabled>💾 Download LUA</button>
+  </div>
+
+  <textarea id="output" placeholder="🚀 Your converted LUA code will appear here..."></textarea>
+</div>
+
 <script>
-// Utility helpers
-function attr(node, name, fallback=null){ if(!node) return fallback; return node.getAttribute(name) ?? fallback }
-function n2f(v, d=1){ if(v===null) return d; const n=parseFloat(v); return isNaN(n)?d:n }
+let xmlFiles = [];
+let hxFiles = [];
+let outputContent = '';
+let stageCounter = 1;
 
-function xmlToLua(xmlString, opts={}){
-  const parser = new DOMParser();
-  let doc;
-  try{ doc = parser.parseFromString(xmlString, 'application/xml'); }
-  catch(e){ return '-- XML parsing error\n' + e }
-  const err = doc.querySelector('parsererror');
-  if(err) return '-- XML parsing error:\n' + err.textContent;
+function showStatus(msg,type){ const s=document.getElementById('status'); s.textContent=msg; s.className=`status ${type} show`; setTimeout(()=>{s.classList.remove('show');},3000);}
+function updateButtons(){ document.getElementById('convertBtn').disabled = xmlFiles.length === 0; document.getElementById('downloadBtn').disabled = !outputContent.trim(); }
 
-  const stage = doc.querySelector('stage');
-  if(!stage) return '-- no <stage> element found';
+document.getElementById('xmlInput').addEventListener('change', e=>{
+  xmlFiles = Array.from(e.target.files);
+  const label=document.getElementById('xmlLabel');
+  if(xmlFiles.length){ label.textContent=`✅ ${xmlFiles.length} XML file(s) selected`; label.classList.add('has-file'); showStatus('✅ XML files loaded','success'); updateButtons();}
+});
 
-  const folder = attr(stage, 'folder', '').replace(/\\^\\/,'');
-  const name = attr(stage, 'name', 'stage')
-  const zoom = attr(stage, 'zoom', null)
-  const gfZoom = attr(stage, 'gfZoom', null)
-  const noteSkin = attr(stage, 'noteSkin', null)
-  const timeBarSkin = attr(stage, 'timeBarSkin', null)
+document.getElementById('hxInput').addEventListener('change', e=>{
+  hxFiles = Array.from(e.target.files);
+  const label=document.getElementById('hxLabel');
+  if(hxFiles.length){ label.textContent=`✅ ${hxFiles.length} HX file(s) selected`; label.classList.add('has-file'); showStatus('✅ HX files loaded','success'); updateButtons();}
+});
 
-  const keepCase = opts.camelCasePaths;
-  function resPath(spriteName){
-    // Build resource path for Psych: convention 'stages/{folder}/{spriteName}'
-    let base = folder || '';
-    if(!keepCase) base = base.toLowerCase();
-    // remove trailing slash
-    base = base.replace(/\/+$/, '')
-    if(base && !base.endsWith('/')) base += '/'
-    return base + spriteName
-  }
-
-  const parts = []
-  parts.push("function onCreate()")
-
-  // sprites
-  const sprites = Array.from(stage.querySelectorAll('sprite'))
-  sprites.forEach(sp =>{
-    const sname = attr(sp, 'name', attr(sp,'sprite','sprite'))
-    const spriteFile = attr(sp, 'sprite', sname)
-    const x = n2f(attr(sp,'x',0));
-    const y = n2f(attr(sp,'y',0));
-    const scale = attr(sp,'scale', null);
-    const antialiasing = attr(sp,'antialiasing', null);
-    const updateHitbox = attr(sp,'updateHitbox', null);
-    const scrollx = attr(sp,'scrollx', null);
-    const scrolly = attr(sp,'scrolly', null);
-
-    parts.push(`    makeLuaSprite('${sname}', '${resPath(spriteFile)}', ${x}, ${y});`)
-    if(scrollx !== null || scrolly !== null){
-      const sx = scrollx!==null ? parseFloat(scrollx) : 1
-      const sy = scrolly!==null ? parseFloat(scrolly) : sx
-      parts.push(`    setScrollFactor('${sname}', ${sx}, ${sy});`)
-    } else {
-      parts.push(`    setScrollFactor('${sname}', 1, 1);`)
-    }
-    if(scale !== null) {
-      const s = parseFloat(scale)
-      parts.push(`    scaleLuaSprite('${sname}', ${s}, ${s});`)
-    }
-    parts.push(`    addLuaSprite('${sname}', false);`)
-    if(antialiasing !== null) parts.push(`    setProperty('${sname}.antialiasing', ${antialiasing === 'true' ? 'true' : 'false'});`)
-    if(updateHitbox === 'true') parts.push(`    updateHitbox('${sname}');`)
-    parts.push('')
-  })
-
-  // gf, dad, boyfriend
-  const gf = stage.querySelector('girlfriend')
-  if(gf){
-    const gx=n2f(attr(gf,'x',0)); const gy=n2f(attr(gf,'y',0)); const alpha=attr(gf,'alpha',null);
-    parts.push(`    -- girlfriend`) 
-    parts.push(`    setProperty('gf.x', ${gx});`)
-    parts.push(`    setProperty('gf.y', ${gy});`)
-    if(alpha!==null) parts.push(`    setProperty('gf.alpha', ${parseFloat(alpha)});`)
-    parts.push('')
-  }
-  const dad = stage.querySelector('dad')
-  if(dad){ const dx=n2f(attr(dad,'x',0)); const dy=n2f(attr(dad,'y',0)); const cx=attr(dad,'camxoffset',null); const cy=attr(dad,'camyoffset',null);
-    parts.push(`    -- dad`) 
-    parts.push(`    setProperty('dad.x', ${dx});`)
-    parts.push(`    setProperty('dad.y', ${dy});`)
-    if(cx!==null || cy!==null){ const cxv = cx?parseFloat(cx):0; const cyv = cy?parseFloat(cy):0; parts.push(`    setProperty('dadCameraOffset', {${cxv}, ${cyv}});`) }
-    parts.push('') }
-  const bf = stage.querySelector('boyfriend')
-  if(bf){ const bx=n2f(attr(bf,'x',0)); const by=n2f(attr(bf,'y',0)); const cx=attr(bf,'camxoffset',null); const cy=attr(bf,'camyoffset',null);
-    parts.push(`    -- boyfriend`) 
-    parts.push(`    setProperty('boyfriend.x', ${bx});`)
-    parts.push(`    setProperty('boyfriend.y', ${by});`)
-    if(cx!==null || cy!==null){ const cxv = cx?parseFloat(cx):0; const cyv = cy?parseFloat(cy):0; parts.push(`    setProperty('boyfriendCameraOffset', {${cxv}, ${cyv}});`) }
-    parts.push('') }
-
-  parts.push('end')
-
-  // onCreatePost for zooms and skins
-  if(opts.includeCreatePost){
-    const post = []
-    if(zoom!==null || gfZoom!==null || noteSkin!==null || timeBarSkin!==null){
-      post.push('\nfunction onCreatePost()')
-      if(zoom!==null) post.push(`    setProperty('defaultCamZoom', ${parseFloat(zoom)});`)
-      if(gfZoom!==null) post.push(`    setProperty('defaultGFZoom', ${parseFloat(gfZoom)});`)
-      if(timeBarSkin!==null) post.push(`    -- timeBarSkin: ${timeBarSkin} (use setTimeBarColors or custom graphic)
-    -- setTimeBarColors('FFFFFF','BFBFBF')`)
-      if(noteSkin!==null) post.push(`    -- noteSkin: ${noteSkin} (you may want to add noteskin change script)`) 
-      post.push('end')
-    }
-    parts.push(post.join('\n'))
-  }
-
-  return parts.join('\n')
+function extractSpritesFromXML(xmlText){
+  const lines = xmlText.split('\n').filter(l=>l.includes('<sprite'));
+  return lines.map(line=>{
+    const name = (line.match(/name="(.*?)"/)||[])[1]||'sprite';
+    const path = (line.match(/sprite="(.*?)"/)||[])[1]||'unknown';
+    const x = (line.match(/x="(.*?)"/)||[])[1]||0;
+    const y = (line.match(/y="(.*?)"/)||[])[1]||0;
+    const scale = (line.match(/scale="(.*?)"/)||[])[1]||1;
+    return {name,path,x,y,scale};
+  });
 }
 
-// Simple hx -> lua mid-song converter (best-effort)
-function hxToLua(hxText){
-  if(!hxText || !hxText.trim()) return '';
-  const lines = hxText.split(/\r?\n/);
-  let lua = '\n-- Converted mid-song logic (best-effort)\nfunction onStepHit()\n';
-  // find simple patterns: if (step == N) vid.play(); and vid.visible = false;
-  const playRegex = /if\s*\(step\s*==\s*(\d+)\)\s*{?\s*vid\.play\(\)\s*;?\s*}?/i;
-  const visOffRegex = /if\s*\(step\s*==\s*(\d+)\)\s*{?\s*vid\.visible\s*=\s*false\s*;?\s*}?/i;
-  for(const l of lines){
-    let m;
-    if(m = l.match(playRegex)){
-      lua += `    if curStep == ${m[1]} then\n        -- start video (ensure you loaded it as a Lua video or use startVideo)\n        startVideo('bargain')\n    end\n`;
-    }
-    if(m = l.match(visOffRegex)){
-      lua += `    if curStep == ${m[1]} then\n        -- hide video or sprite\n        setProperty('bargain.visible', false)\n    end\n`;
+async function convert(){
+  if(xmlFiles.length===0){ showStatus('❌ No XML files selected','error'); return; }
+  outputContent = '-- Psych Engine Lua generated\n\nfunction onCreate()\n';
+  
+  for(const file of xmlFiles){
+    const text = await file.text();
+    const sprites = extractSpritesFromXML(text);
+    for(const s of sprites){
+      outputContent += `makeLuaSprite('${s.name}','${s.path}',${s.x},${s.y})\n`;
+      outputContent += `scaleLuaSprite('${s.name}',${s.scale},${s.scale})\n`;
+      outputContent += `addLuaSprite('${s.name}', false)\n\n`;
     }
   }
-  lua += 'end\n'
-  return lua
+
+  // Handle HX files
+  for(const hx of hxFiles){
+    const text = await hx.text();
+    if(text.includes('vid.play()')) outputContent += "-- Video play detected from HX file\n";
+    if(text.includes('step')) outputContent += "-- Step-based event detected from HX\n";
+  }
+
+  outputContent += 'end\n';
+  document.getElementById('output').value = outputContent;
+  showStatus('🎉 Conversion completed successfully!','success');
+  updateButtons();
 }
 
-// UI wiring
-const xmlInput = document.getElementById('xmlInput')
-const hxInput = document.getElementById('hxInput')
-const out = document.getElementById('output')
-const convertBtn = document.getElementById('convertBtn')
-const downloadBtn = document.getElementById('downloadBtn')
-const copyBtn = document.getElementById('copyBtn')
-const exampleBtn = document.getElementById('exampleBtn')
-
-convertBtn.addEventListener('click', ()=>{
-  const lua = xmlToLua(xmlInput.value, {includeCreatePost: document.getElementById('includeCreatePost').checked, camelCasePaths: document.getElementById('camelCasePaths').checked})
-  const mid = hxToLua(hxInput.value)
-  out.textContent = lua + (mid ? '\n' + mid : '')
-})
-
-copyBtn.addEventListener('click', async ()=>{
-  try{ await navigator.clipboard.writeText(out.textContent); alert('copied!') }catch(e){ alert('copy failed') }
-})
-
-downloadBtn.addEventListener('click', ()=>{
-  const blob = new Blob([out.textContent], {type:'text/plain'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = 'converted_stage.lua'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-})
-
-exampleBtn.addEventListener('click', ()=>{
-  xmlInput.value = `<!DOCTYPE codename-engine-stage>\n<stage folder="stages/dustshift/" name="dustshift" zoom="0.55" gfZoom="0.43" noteSkin="cornered" timeBarSkin="waterfall">\n    <sprite x=\"-280\" sprite=\"red\" y=\"0\" name=\"red\" scale=\"1.26\" antialiasing=\"true\" updateHitbox=\"true\"/>\n    <sprite x=\"1080\" sprite=\"school\" y=\"1000\" name=\"school\" scale=\"10\" antialiasing=\"false\"/>\n    <girlfriend x=\"1000\" y=\"1049\" alpha=\"0\"/>\n    <dad x=\"250\" y=\"1320\" camyoffset=\"-50\" camxoffset=\"200\"/>\n    <boyfriend x=\"1920\" y=\"1550\" camxoffset=\"-400\" camyoffset=\"-50\"/>\n</stage>`;
-  hxInput.value = `function stepHit(step:Int) {\n    if (step == 1) { vid.play(); }\n    if (step == 156) { vid.visible = false; }\n}`;
-})
+function download(){
+  if(!outputContent.trim()){ showStatus('❌ No content to download','error'); return; }
+  const blob = new Blob([outputContent], {type:'text/plain'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='stage_psych_'+stageCounter+'.lua';
+  stageCounter++;
+  a.click();
+  showStatus('💾 LUA file downloaded!','success');
+}
 </script>
 </body>
 </html>
