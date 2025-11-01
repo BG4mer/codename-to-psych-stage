@@ -57,21 +57,43 @@ let hxFiles = [];
 let outputContent = '';
 let stageCounter = 1;
 
-function showStatus(msg,type){ const s=document.getElementById('status'); s.textContent=msg; s.className=`status ${type} show`; setTimeout(()=>{s.classList.remove('show');},3000);}
-function updateButtons(){ document.getElementById('convertBtn').disabled = xmlFiles.length === 0; document.getElementById('downloadBtn').disabled = !outputContent.trim(); }
+function showStatus(msg,type){ 
+  const s=document.getElementById('status'); 
+  s.textContent=msg; 
+  s.className=`status ${type} show`; 
+  setTimeout(()=>{s.classList.remove('show');},3000);
+}
 
+function updateButtons(){ 
+  document.getElementById('convertBtn').disabled = xmlFiles.length === 0; 
+  document.getElementById('downloadBtn').disabled = !outputContent.trim(); 
+}
+
+// Handle XML input
 document.getElementById('xmlInput').addEventListener('change', e=>{
   xmlFiles = Array.from(e.target.files);
   const label=document.getElementById('xmlLabel');
-  if(xmlFiles.length){ label.textContent=`✅ ${xmlFiles.length} XML file(s) selected`; label.classList.add('has-file'); showStatus('✅ XML files loaded','success'); updateButtons();}
+  if(xmlFiles.length){ 
+    label.textContent=`✅ ${xmlFiles.length} XML file(s) selected`; 
+    label.classList.add('has-file'); 
+    showStatus('✅ XML files loaded','success'); 
+    updateButtons();
+  }
 });
 
+// Handle HX input
 document.getElementById('hxInput').addEventListener('change', e=>{
   hxFiles = Array.from(e.target.files);
   const label=document.getElementById('hxLabel');
-  if(hxFiles.length){ label.textContent=`✅ ${hxFiles.length} HX file(s) selected`; label.classList.add('has-file'); showStatus('✅ HX files loaded','success'); updateButtons();}
+  if(hxFiles.length){ 
+    label.textContent=`✅ ${hxFiles.length} HX file(s) selected`; 
+    label.classList.add('has-file'); 
+    showStatus('✅ HX files loaded','success'); 
+    updateButtons();
+  }
 });
 
+// Extract sprites from XML
 function extractSpritesFromXML(xmlText){
   const lines = xmlText.split('\n').filter(l=>l.includes('<sprite'));
   return lines.map(line=>{
@@ -84,6 +106,20 @@ function extractSpritesFromXML(xmlText){
   });
 }
 
+// Extract step events from HX file
+function extractStepEvents(hxText){
+  const stepEvents = [];
+  const regex = /onStep\((\d+),\s*function\(\)\s*{([\s\S]*?)}\)/g;
+  let match;
+  while((match = regex.exec(hxText)) !== null){
+    const step = parseInt(match[1]);
+    const code = match[2].trim().replace(/\n/g,'\n\t');
+    stepEvents.push({step,code});
+  }
+  return stepEvents;
+}
+
+// Convert function using valid Psych Engine functions
 async function convert(){
   if(xmlFiles.length===0){ showStatus('❌ No XML files selected','error'); return; }
   outputContent = '-- Psych Engine Lua generated\n\nfunction onCreate()\n';
@@ -93,24 +129,34 @@ async function convert(){
     const sprites = extractSpritesFromXML(text);
     for(const s of sprites){
       outputContent += `makeLuaSprite('${s.name}','${s.path}',${s.x},${s.y})\n`;
-      outputContent += `scaleLuaSprite('${s.name}',${s.scale},${s.scale})\n`;
+      outputContent += `scaleObject('${s.name}',${s.scale},${s.scale})\n`;
       outputContent += `addLuaSprite('${s.name}', false)\n\n`;
     }
   }
 
-  // Handle HX files
+  outputContent += 'end\n\n';
+
+  // Process HX step events
+  let stepEventCount = 0;
   for(const hx of hxFiles){
-    const text = await hx.text();
-    if(text.includes('vid.play()')) outputContent += "-- Video play detected from HX file\n";
-    if(text.includes('step')) outputContent += "-- Step-based event detected from HX\n";
+    const hxText = await hx.text();
+    const steps = extractStepEvents(hxText);
+    if(steps.length){
+      outputContent += 'function onStepHit()\n';
+      steps.forEach(s=>{
+        outputContent += `\tif curStep == ${s.step} then\n\t\t${s.code}\n\tend\n`;
+        stepEventCount++;
+      });
+      outputContent += 'end\n\n';
+    }
   }
 
-  outputContent += 'end\n';
   document.getElementById('output').value = outputContent;
-  showStatus('🎉 Conversion completed successfully!','success');
+  showStatus(`🎉 Conversion completed! ${stepEventCount} step event(s) detected.`,'success');
   updateButtons();
 }
 
+// Download function
 function download(){
   if(!outputContent.trim()){ showStatus('❌ No content to download','error'); return; }
   const blob = new Blob([outputContent], {type:'text/plain'});
@@ -121,6 +167,9 @@ function download(){
   a.click();
   showStatus('💾 LUA file downloaded!','success');
 }
+
+// Initialize button states
+updateButtons();
 </script>
 </body>
 </html>
