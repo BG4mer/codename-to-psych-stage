@@ -1,17 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Codename to Lua Converter</title>
-  <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Codename → Psych Converter</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <h1>Codename → Lua Converter</h1>
-  <div id="dropZone">Drop .xml or .hx file here or select manually</div>
-  <input type="file" id="fileInput" accept=".xml,.hx">
-  <button id="convertBtn">Convert</button>
+
+  <div id="dropZone" class="drop-zone">Drop .xml or .hx files here or click to select</div>
+  <input type="file" id="fileInput" accept=".xml,.hx" multiple>
+  <button id="convertBtn" disabled>Convert All</button>
+
   <pre id="output"></pre>
+
   <script src="script.js"></script>
 </body>
 </html>
