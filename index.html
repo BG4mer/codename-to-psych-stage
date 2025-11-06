@@ -1,175 +1,311 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Codename → Psych Engine Converter</title>
-<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
-<style>
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family:'Space Mono', monospace; background:#1a1a2e; color:#e94560; min-height:100vh; padding:2rem; display:flex; flex-direction:column; align-items:center;}
-  .container { max-width:800px; width:100%; background:rgba(0,0,0,0.7); backdrop-filter:blur(10px); border-radius:20px; padding:2rem; border:1px solid rgba(233,69,96,0.2);}
-  h1 { text-align:center; margin-bottom:2rem; font-size:1.8rem; font-weight:700; background:linear-gradient(45deg,#e94560,#f27121); -webkit-background-clip:text; -webkit-text-fill-color:transparent;}
-  .file-input-wrapper { position: relative; margin: 1rem 0; width:100%; }
-  .file-input { position:absolute; left:-9999px; }
-  .file-input-label { display:block; padding:1rem; background:linear-gradient(135deg,#0f3460,#533483); color:white; border-radius:10px; cursor:pointer; text-align:center; border:2px solid transparent; transition: all 0.3s;}
-  .file-input-label:hover { background:linear-gradient(135deg,#533483,#0f3460); border-color:#e94560; }
-  .file-input-label.has-file { background:linear-gradient(135deg,#e94560,#f27121); animation:pulse 2s infinite;}
-  @keyframes pulse {0%,100%{opacity:1;}50%{opacity:0.8;}}
-  .button-group { display:flex; gap:1rem; margin:2rem 0; }
-  button { flex:1; padding:1rem 2rem; background:linear-gradient(135deg,#e94560,#f27121); color:white; border:none; border-radius:10px; cursor:pointer; font-weight:700; position:relative; overflow:hidden; transition:0.3s;}
-  button:hover { transform:translateY(-3px); box-shadow:0 10px 20px rgba(233,69,96,0.3);}
-  button:disabled { opacity:0.5; cursor:not-allowed; }
-  textarea { width:100%; height:400px; background:#0a0a0a; color:#00ff41; font-family:'Space Mono', monospace; font-size:0.9rem; border:2px solid #333; border-radius:10px; padding:1rem; resize:vertical;}
-  .status { margin:1rem 0; padding:1rem; border-radius:10px; text-align:center; font-weight:700; opacity:0; transition:0.3s;}
-  .status.show { opacity:1; }
-  .status.success { background: rgba(46,204,113,0.2); border:1px solid #2ecc71; color:#2ecc71; }
-  .status.error { background: rgba(231,76,60,0.2); border:1px solid #e74c3c; color:#e74c3c; }
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Codename (Haxe) → Psych Engine (Lua) Converter</title>
+  <style>
+    :root{--bg:#07121a;--card:#071925;--muted:#9aa4b2;--accent:#8b5cf6;--mono:#e6eef8}
+    *{box-sizing:border-box}
+    body{font-family:Inter,ui-sans-serif,system-ui,Segoe UI,Roboto,Arial;margin:0;background:linear-gradient(180deg,#041021,#07121a);color:var(--mono)}
+    .wrap{max-width:1200px;margin:18px auto;padding:16px;display:grid;grid-template-columns:1fr 360px;gap:16px}
+    header{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:12px}
+    h1{margin:0;font-size:16px}
+    .muted{color:var(--muted);font-size:13px}
+    .card{background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01));border-radius:12px;padding:12px;box-shadow:0 6px 18px rgba(2,6,23,0.5)}
+    textarea{width:100%;height:420px;background:transparent;border:1px dashed rgba(255,255,255,0.04);padding:12px;border-radius:8px;color:inherit;font-family:ui-monospace, SFMono-Regular,Menlo,Monaco,monospace;font-size:13px;resize:vertical}
+    .controls{display:flex;gap:8px;flex-wrap:wrap}
+    button{background:var(--accent);border:0;padding:8px 10px;border-radius:9px;color:white;cursor:pointer}
+    .small{background:transparent;border:1px solid rgba(255,255,255,0.04);padding:6px;border-radius:8px;color:var(--muted);cursor:pointer}
+    table{width:100%;border-collapse:collapse;margin-top:8px}
+    th,td{padding:8px;border-bottom:1px solid rgba(255,255,255,0.02);font-size:13px}
+    th{color:var(--muted);text-align:left}
+    input[type=text]{width:100%;background:transparent;border:0;color:inherit}
+    .rightcol{display:flex;flex-direction:column;gap:12px}
+    .links a{color:var(--accent);text-decoration:none}
+    footer{grid-column:1/-1;text-align:right;color:var(--muted);font-size:12px;margin-top:8px}
+    /* terminal theme */
+    .terminal .wrap{background:#000}
+    .terminal textarea{background:#041214;border:1px solid #022}
+    .theme-toggle{display:flex;gap:6px;align-items:center}
+  </style>
 </head>
 <body>
-<div class="container">
-  <h1>🎵 Codename → Psych Engine Converter</h1>
+  <div class="wrap card" id="app">
+    <header>
+      <div>
+        <h1>Codename Haxe → Psych Engine Lua Converter</h1>
+        <div class="muted">Hybrid converter — automatic Haxe→Lua rules + editable mapping table. Auto-run enabled by default.</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <div class="theme-toggle muted">
+          <label style="font-size:13px;margin-right:6px">Theme</label>
+          <button id="themeBtn" class="small">Toggle Terminal</button>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end">
+          <div style="font-size:12px;color:var(--muted)">Auto-run</div>
+          <button id="autoRunBtn" class="small">Auto: ON</button>
+        </div>
+      </div>
+    </header>
 
-  <div class="file-input-wrapper">
-    <input type="file" id="xmlInput" accept=".xml" class="file-input" multiple>
-    <label for="xmlInput" class="file-input-label" id="xmlLabel">📁 Select Codename XML file(s)</label>
+    <section style="display:flex;gap:12px">
+      <div style="flex:1">
+        <label class="muted">Codename / Haxe input</label>
+        <textarea id="input">// Paste Haxe (Codename) script here
+
+function create() {
+    if (FlxG.save.data.mechanics)
+        strumLines.members[1].onNoteUpdate.add(onNoteUpdate);
+}
+
+function onNoteUpdate(e:NoteUpdateEvent) {
+    var note:Note = e.note;
+    if (note.noteType != "NOTE_undyne") return;
+
+    // ...
+}
+</textarea>
+
+        <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
+          <button id="reconvert">Reconvert</button>
+          <button id="copyOut" class="small">Copy output</button>
+          <button id="download" class="small">Download .lua</button>
+          <button id="previewRules" class="small">Show rules</button>
+          <button id="resetDefaults" class="small">Reset mappings</button>
+        </div>
+
+        <div style="margin-top:12px" class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div class="muted">Auto-mapping rules (these run first)</div>
+            <div class="muted" style="font-size:12px">You can edit later in the mapping table below</div>
+          </div>
+          <pre id="autoRules" style="white-space:pre-wrap;margin:8px 0;font-size:13px;color:var(--muted)"></pre>
+        </div>
+      </div>
+
+      <aside class="rightcol" style="width:360px">
+        <div class="card">
+          <label class="muted">Lua output (Psych Engine)</label>
+          <textarea id="output" placeholder="Converted Lua will appear here..."></textarea>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button id="format" class="small">Simple format</button>
+            <button id="clear" class="small">Clear</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="muted">How it works</div>
+          <ol style="padding-left:18px;margin:6px 0 0 0;color:var(--muted);font-size:13px">
+            <li>Automatic regex-based Haxe→Lua replacements run first.</li>
+            <li>User mappings (editable) run after — supports literal or regex (wrap with /pattern/flags).</li>
+            <li>This is a textual converter — test converted code in Psych Engine; manual tweaks will be needed for engine specifics.</li>
+          </ol>
+        </div>
+
+        <div class="card">
+          <div class="muted">Documentation links</div>
+          <div style="margin-top:6px"><a href="https://codename-engine.com/wiki/" target="_blank">Codename Engine Wiki</a></div>
+          <div style="margin-top:4px"><a href="https://shadowmario.github.io/psychengine.lua/" target="_blank">Psych Engine Lua API</a></div>
+        </div>
+      </aside>
+    </section>
+
+    <section class="card" style="grid-column:1/-1;margin-top:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div class="muted">Editable mapping table (applies after auto rules)</div>
+          <div style="font-size:12px;color:var(--muted)">Left = Haxe (literal or /regex/flags), Right = Lua replacement (use $1, $2 for capture groups)</div>
+        </div>
+        <div class="controls">
+          <button id="addRow" class="small">Add row</button>
+        </div>
+      </div>
+
+      <table id="mappings" style="margin-top:10px">
+        <thead><tr><th>Haxe</th><th>Lua</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button id="applyMappings">Apply mappings</button>
+        <button id="exportMap" class="small">Export JSON</button>
+        <button id="importMap" class="small">Import JSON</button>
+      </div>
+    </section>
+
+    <footer>Made with ☕ — This tool does best-effort conversions. Always test in-game.</footer>
   </div>
 
-  <div class="file-input-wrapper">
-    <input type="file" id="hxInput" accept=".hx" class="file-input" multiple>
-    <label for="hxInput" class="file-input-label" id="hxLabel">📜 Select Codename HX file(s) (optional)</label>
-  </div>
+  <script>
+    // ----- default auto rules (Haxe => Lua) -----
+    const autoRules = [
+      {find: /\/\/+/g, replace: '--'},
+      {find: /function\s+create\s*\(\s*\)/g, replace: 'function onCreate()'},
+      {find: /function\s+update\s*\(\s*\)/g, replace: 'function onUpdate(elapsed)'},
+      {find: /var\s+([a-zA-Z0-9_]+)\s*:\s*Float\s*=\s*/g, replace: 'local $1 = '},
+      {find: /var\s+([a-zA-Z0-9_]+)\s*:\s*Int\s*=\s*/g, replace: 'local $1 = '},
+      {find: /var\s+([a-zA-Z0-9_]+)\s*:\s*Bool\s*=\s*/g, replace: 'local $1 = '},
+      {find: /var\s+([a-zA-Z0-9_]+)\s*:\s*[A-Za-z0-9_<>]+\s*=\s*/g, replace: 'local $1 = '},
+      {find: /FlxG\.save\.data\./g, replace: \"getData('\') /* review */ getPropertyFromClass('flixel.FlxG','save.data.')\"},
+      {find: /FlxG\.save\.data/g, replace: \"getPropertyFromClass('flixel.FlxG','save.data')\"},
+      {find: /FlxEase\.([A-Za-z0-9_]+)\(/g, replace: 'FlxEase.$1('},
+      {find: /FlxMath\.lerp\(/g, replace: 'lerp('},
+      {find: /Conductor\.songPosition/g, replace: 'getPropertyFromClass(\"Conductor\",\"songPosition\")'},
+      {find: /Strum\.N_WIDTHDIV2/g, replace: 'Strum.N_WIDTHDIV2'},
+      {find: /note\.isSustainNote/g, replace: 'note.isSustainNote'},
+      {find: /note\.noteType/g, replace: 'note.noteType'},
+      {find: /==/g, replace: '=='},
+      // a few convenience replacements
+      {find: /\.members\b/g, replace: ''},
+      {find: /new\s+FlxSprite\s*\(/g, replace: \"makeLuaSprite(\"},
+      {find: /add\s*\(([^)]+)\)/g, replace: 'addLuaSprite($1)'}
+    ];
 
-  <div class="status" id="status"></div>
+    // ----- default editable mappings -----
+    const defaultMappings = [
+      ['/function\\s+onNoteUpdate\\s*\\(([^)]*)\\)/g','function onNoteUpdate($1)'],
+      ['/var\\s+([a-zA-Z0-9_]+)\\s*:\\s*([A-Za-z0-9_<>]+)\\s*=\\s*/g','local $1 = '],
+      ['strumLines.members','strumLines'],
+      ['note.extra\["([^"]+)"\]','note.extra["$1"]'],
+      ['e.__reposNote','e.__reposNote'],
+    ];
 
-  <div class="button-group">
-    <button onclick="convert()" id="convertBtn" disabled>✨ Convert to Psych</button>
-    <button onclick="download()" id="downloadBtn" disabled>💾 Download LUA</button>
-  </div>
+    // DOM
+    const input = document.getElementById('input');
+    const output = document.getElementById('output');
+    const reconvertBtn = document.getElementById('reconvert');
+    const autoRulesEl = document.getElementById('autoRules');
+    const mappingsTableBody = document.querySelector('#mappings tbody');
+    const addRowBtn = document.getElementById('addRow');
+    const applyMappingsBtn = document.getElementById('applyMappings');
+    const copyOutBtn = document.getElementById('copyOut');
+    const downloadBtn = document.getElementById('download');
+    const previewRulesBtn = document.getElementById('previewRules');
+    const resetDefaultsBtn = document.getElementById('resetDefaults');
+    const autoRunBtn = document.getElementById('autoRunBtn');
+    const themeBtn = document.getElementById('themeBtn');
 
-  <textarea id="output" placeholder="🚀 Your converted LUA code will appear here..."></textarea>
-</div>
+    let autoRun = true;
+    let isTerminal = false;
 
-<script>
-let xmlFiles = [];
-let hxFiles = [];
-let outputContent = '';
-let stageCounter = 1;
-
-function showStatus(msg,type){ 
-  const s=document.getElementById('status'); 
-  s.textContent=msg; 
-  s.className=`status ${type} show`; 
-  setTimeout(()=>{s.classList.remove('show');},3000);
-}
-
-function updateButtons(){ 
-  document.getElementById('convertBtn').disabled = xmlFiles.length === 0; 
-  document.getElementById('downloadBtn').disabled = !outputContent.trim(); 
-}
-
-// Handle XML input
-document.getElementById('xmlInput').addEventListener('change', e=>{
-  xmlFiles = Array.from(e.target.files);
-  const label=document.getElementById('xmlLabel');
-  if(xmlFiles.length){ 
-    label.textContent=`✅ ${xmlFiles.length} XML file(s) selected`; 
-    label.classList.add('has-file'); 
-    showStatus('✅ XML files loaded','success'); 
-    updateButtons();
-  }
-});
-
-// Handle HX input
-document.getElementById('hxInput').addEventListener('change', e=>{
-  hxFiles = Array.from(e.target.files);
-  const label=document.getElementById('hxLabel');
-  if(hxFiles.length){ 
-    label.textContent=`✅ ${hxFiles.length} HX file(s) selected`; 
-    label.classList.add('has-file'); 
-    showStatus('✅ HX files loaded','success'); 
-    updateButtons();
-  }
-});
-
-// Extract sprites from XML
-function extractSpritesFromXML(xmlText){
-  const lines = xmlText.split('\n').filter(l=>l.includes('<sprite'));
-  return lines.map(line=>{
-    const name = (line.match(/name="(.*?)"/)||[])[1]||'sprite';
-    const path = (line.match(/sprite="(.*?)"/)||[])[1]||'unknown';
-    const x = (line.match(/x="(.*?)"/)||[])[1]||0;
-    const y = (line.match(/y="(.*?)"/)||[])[1]||0;
-    const scale = (line.match(/scale="(.*?)"/)||[])[1]||1;
-    return {name,path,x,y,scale};
-  });
-}
-
-// Extract step events from HX file
-function extractStepEvents(hxText){
-  const stepEvents = [];
-  const regex = /onStep\((\d+),\s*function\(\)\s*{([\s\S]*?)}\)/g;
-  let match;
-  while((match = regex.exec(hxText)) !== null){
-    const step = parseInt(match[1]);
-    const code = match[2].trim().replace(/\n/g,'\n\t');
-    stepEvents.push({step,code});
-  }
-  return stepEvents;
-}
-
-// Convert function using valid Psych Engine functions
-async function convert(){
-  if(xmlFiles.length===0){ showStatus('❌ No XML files selected','error'); return; }
-  outputContent = '-- Psych Engine Lua generated\n\nfunction onCreate()\n';
-  
-  for(const file of xmlFiles){
-    const text = await file.text();
-    const sprites = extractSpritesFromXML(text);
-    for(const s of sprites){
-      outputContent += `makeLuaSprite('${s.name}','${s.path}',${s.x},${s.y})\n`;
-      outputContent += `scaleObject('${s.name}',${s.scale},${s.scale})\n`;
-      outputContent += `addLuaSprite('${s.name}', false)\n\n`;
+    // render auto rules for user
+    function renderAutoRules(){
+      autoRulesEl.textContent = autoRules.map(r=>`${r.find} → ${r.replace}`).join('
+');
     }
-  }
 
-  outputContent += 'end\n\n';
-
-  // Process HX step events
-  let stepEventCount = 0;
-  for(const hx of hxFiles){
-    const hxText = await hx.text();
-    const steps = extractStepEvents(hxText);
-    if(steps.length){
-      outputContent += 'function onStepHit()\n';
-      steps.forEach(s=>{
-        outputContent += `\tif curStep == ${s.step} then\n\t\t${s.code}\n\tend\n`;
-        stepEventCount++;
+    // init mappings table
+    function loadDefaultMappings(){
+      mappingsTableBody.innerHTML = '';
+      defaultMappings.forEach(m=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td><input type=text value='${escapeHtml(m[0])}'></td><td><input type=text value='${escapeHtml(m[1])}'></td><td><button class=small data-action=del>Del</button></td>`;
+        mappingsTableBody.appendChild(tr);
       });
-      outputContent += 'end\n\n';
     }
-  }
 
-  document.getElementById('output').value = outputContent;
-  showStatus(`🎉 Conversion completed! ${stepEventCount} step event(s) detected.`,'success');
-  updateButtons();
-}
+    function escapeHtml(s){return String(s).replace(/'/g, "\'\").replace(/</g,'&lt;').replace(/>/g,'&gt;')}
 
-// Download function
-function download(){
-  if(!outputContent.trim()){ showStatus('❌ No content to download','error'); return; }
-  const blob = new Blob([outputContent], {type:'text/plain'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download='stage_psych_'+stageCounter+'.lua';
-  stageCounter++;
-  a.click();
-  showStatus('💾 LUA file downloaded!','success');
-}
+    addRowBtn.addEventListener('click', ()=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td><input type=text value=''></td><td><input type=text value=''></td><td><button class=small data-action=del>Del</button></td>`;
+      mappingsTableBody.appendChild(tr);
+    });
 
-// Initialize button states
-updateButtons();
-</script>
+    mappingsTableBody.addEventListener('click', (e)=>{
+      if(e.target.dataset.action === 'del') e.target.closest('tr').remove();
+    });
+
+    function readUserMappings(){
+      return Array.from(mappingsTableBody.querySelectorAll('tr')).map(tr=>{
+        const a = tr.children[0].querySelector('input').value;
+        const b = tr.children[1].querySelector('input').value;
+        return {left:a,right:b};
+      }).filter(x=>x.left.trim());
+    }
+
+    function applyAutoRules(src){
+      let out = src;
+      autoRules.forEach(r=>{
+        try{ out = out.replace(r.find, r.replace); }catch(e){console.warn('auto rule failed', r, e)}
+      });
+      return out;
+    }
+
+    function applyUserMappings(src){
+      let out = src;
+      const maps = readUserMappings();
+      // apply in order
+      maps.forEach(m=>{
+        try{
+          if(m.left.startsWith('/') && m.left.lastIndexOf('/')>0){
+            const last = m.left.lastIndexOf('/');
+            const pat = m.left.slice(1,last);
+            const flags = m.left.slice(last+1);
+            const re = new RegExp(pat, flags);
+            out = out.replace(re, m.right);
+          } else {
+            // literal replace
+            const esc = m.left.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const re = new RegExp(esc, 'g');
+            out = out.replace(re, m.right);
+          }
+        }catch(e){console.warn('user mapping failed', m, e)}
+      });
+      return out;
+    }
+
+    function convert(){
+      let src = input.value;
+      // normalize line endings
+      src = src.replace(/
+?/g,'
+');
+      // run auto rules first
+      let out = applyAutoRules(src);
+      // then user mappings
+      out = applyUserMappings(out);
+      // small cleanups: remove Haxe type declarations left over
+      out = out.replace(/:\s*[A-Za-z0-9_<>]+/g,'');
+      // convert switch-case syntax roughly -> keep as comments for manual work
+      out = out.replace(/switch\s*\(([^)]+)\)\s*\{([\s\S]*?)\}/g, function(m,p,body){
+        return '-- SWITCH CONVERT: manual review required\n-- switch('+p+') {\n' + body.split('\n').map(l=>'-- '+l).join('\n') + '\n-- }';
+      });
+
+      output.value = out;
+    }
+
+    // UI hooks
+    reconvertBtn.addEventListener('click', convert);
+    applyMappingsBtn.addEventListener('click', convert);
+    copyOutBtn.addEventListener('click', ()=>{output.select();document.execCommand('copy');});
+    downloadBtn.addEventListener('click', ()=>{
+      const blob = new Blob([output.value || '-- empty.lua'],{type:'text/plain'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href=url;a.download='converted.lua';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+    });
+
+    previewRulesBtn.addEventListener('click', ()=>{alert('Auto rules run first (regex replacements).\nThen editable mapping rows apply.\nUse /pattern/flags for regex in left column.');});
+
+    resetDefaultsBtn.addEventListener('click', ()=>{if(confirm('Reset mappings to defaults?')) loadDefaultMappings(); convert();});
+
+    autoRunBtn.addEventListener('click', ()=>{autoRun = !autoRun; autoRunBtn.textContent = autoRun? 'Auto: ON' : 'Auto: OFF'});
+
+    themeBtn.addEventListener('click', ()=>{isTerminal = !isTerminal; document.body.classList.toggle('terminal', isTerminal); themeBtn.textContent = isTerminal? 'Toggle Modern' : 'Toggle Terminal'});
+
+    document.getElementById('format').addEventListener('click', ()=>{
+      output.value = output.value.replace(/\n{3,}/g,'\n\n').replace(/\t/g,'  ').trim() + '\n';
+    });
+
+    document.getElementById('clear').addEventListener('click', ()=>{output.value = ''});
+
+    // auto-run on input changes
+    let timer;
+    input.addEventListener('input', ()=>{ if(autoRun){ clearTimeout(timer); timer = setTimeout(convert, 400); } });
+
+    // init
+    renderAutoRules(); loadDefaultMappings(); convert();
+  </script>
 </body>
 </html>
