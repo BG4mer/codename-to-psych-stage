@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en">
+<!DOCTYPE html>
+<html lang="en">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -108,15 +109,48 @@
 <script>
   const input = document.getElementById('input');
   const output = document.getElementById('output');
-  const status = document.getElementById('status');const mappings = [ {from: /function create\s/g, to: 'function onCreate()'}, {from: /function update\s/g, to: 'function onUpdate(elapsed)'}, {from: /var\s+(\w+):\w+\s*=\s*/g, to: 'local $1 = '}, {from: ///+/g, to: '--'}, {from: /FlxMath.lerp/g, to: 'math.lerp'}, {from: /FlxEase.backOut/g, to: 'easeBackOut'}, {from: /FlxG.save.data./g, to: "getPropertyFromClass('flixel.FlxG', 'save.data.')"}, {from: /;/g, to: ''} ];
+  const status = document.getElementById('status');
 
-document.getElementById('convertBtn').onclick = () => { let code = input.value; mappings.forEach(map => { code = code.replace(map.from, map.to); }); output.value = code; status.textContent = 'Conversion complete!'; };
+  const mappings = [
+    {from: /function create\s*\(\)/g, to: 'function onCreate()'},
+    {from: /function update\s*\(.*?\)/g, to: 'function onUpdate(elapsed)'},
+    {from: /var\s+(\w+):\w+\s*=\s*/g, to: 'local $1 = '},
+    {from: /\/\/+/g, to: '--'},
+    {from: /FlxMath\.lerp/g, to: 'math.lerp'},
+    {from: /FlxEase\.backOut/g, to: 'easeBackOut'},
+    {from: /FlxG\.save\.data\./g, to: "getPropertyFromClass('flixel.FlxG', 'save.data.')"},
+    {from: /;/g, to: ''}
+  ];
 
-document.getElementById('copyBtn').onclick = () => { navigator.clipboard.writeText(output.value); status.textContent = 'Copied to clipboard!'; };
+  document.getElementById('convertBtn').onclick = () => {
+    let code = input.value;
+    mappings.forEach(map => { code = code.replace(map.from, map.to); });
+    output.value = code;
+    status.textContent = 'Conversion complete!';
+  };
 
-document.getElementById('downloadBtn').onclick = () => { const blob = new Blob([output.value], {type: 'text/plain'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'converted.lua'; a.click(); };
+  document.getElementById('copyBtn').onclick = () => {
+    navigator.clipboard.writeText(output.value);
+    status.textContent = 'Copied to clipboard!';
+  };
 
-const themeBtn = document.getElementById('themeBtn'); let dark = true; themeBtn.onclick = () => { dark = !dark; document.body.style.background = dark ? 'radial-gradient(circle at top left, #0f2027, #203a43, #2c5364)' : '#fafafa'; document.body.style.color = dark ? '#e5e5e5' : '#222'; themeBtn.textContent = dark ? 'Switch Theme' : 'Switch Back'; status.style.color = dark ? '#00ffa6' : '#007acc'; }; </script>
+  document.getElementById('downloadBtn').onclick = () => {
+    const blob = new Blob([output.value], {type: 'text/plain'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'converted.lua';
+    a.click();
+  };
 
+  const themeBtn = document.getElementById('themeBtn');
+  let dark = true;
+  themeBtn.onclick = () => {
+    dark = !dark;
+    document.body.style.background = dark ? 'radial-gradient(circle at top left, #0f2027, #203a43, #2c5364)' : '#fafafa';
+    document.body.style.color = dark ? '#e5e5e5' : '#222';
+    themeBtn.textContent = dark ? 'Switch Theme' : 'Switch Back';
+    status.style.color = dark ? '#00ffa6' : '#007acc';
+  };
+</script>
 </body>
 </html>
